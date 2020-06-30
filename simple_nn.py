@@ -29,10 +29,10 @@ def load_params(layers, filename = 'data.h5') :
         params = init(layers)
     return params
 
-def classification_to_learn(X) :
+def classification_to_learn(X, layers) :
     # in the absence of data, lets make some up
     m = len(X[0,:])
-    Y = np.zeros((LAYERS[len(LAYERS)-1],m))
+    Y = np.zeros((layers[len(layers)-1],m))
     for i in range(m) :
         # whatever classification fucntion you like so long as Y is either 1 or 0
         if 2*np.sin(X[0,i]) > np.cos(X[1,i]) :
@@ -44,7 +44,7 @@ def classification_to_learn(X) :
 def generate_X_Y(m, layers) :
     # random inputs from -5 to 5
     X = np.random.uniform(-5, 5, [layers[0],m])
-    Y = classification_to_learn(X)
+    Y = classification_to_learn(X, layers)
     return (X, Y)
 
 def relu(Z) :
@@ -173,18 +173,17 @@ def gradient_decent(X, Y, params, layers, alpha = 0.001, itterations = 100, grad
             else :
                 return (params, J)
         (J, cache) = cost(X, Y, params, layers)
-        if J_prev is not None and J == J_prev :
+        if J == J_prev :
             print('Cost stopped reducing, breaking')
             break
-        if J_prev is not None and J > J_prev :
+        if J > J_prev :
             print('COST GOING UP, breaking')
             params = params_prev
             break
         if np.isnan(J) :
             print('Cost is NaN, breaking')
             break
-        else :
-            J_prev = J
+        J_prev = J
     return (params, J)
 
 training = False
