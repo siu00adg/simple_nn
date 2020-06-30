@@ -85,26 +85,31 @@ def fp(X, params, layers) :
         H = cache.get('A'+str(len(layers)-1), None)
     return (H, cache)
 
-def cost(X, Y, params, layers, e = 1e-10) :
+def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
     # cost function
     (H, cache) = fp(X, params, layers)
     m = len(Y[0,:])
-    J = np.sum(np.sum(-Y*np.log(H+e)-(1-Y)*np.log(1-H+e)))/m
+    L2reg = 0
+    if lambd > 0 :
+        for l in range(1, len(layers)) :
+            L2reg += np.sum(np.square(params['W'+str(l)]))
+        L2reg = lambd * L2reg / (2 * m)
+    J = np.sum(np.sum(-Y*np.log(H+e)-(1-Y)*np.log(1-H+e)))/m + L2reg
     return (J, cache)
 
-def bp(X, Y, params, layers, cache, grad_check = False) :
-    # simple back propagation, no L2 regularisation or batch norm yet
+def bp(X, Y, params, layers, cache, lambd = 0, grad_check = False) :
+    # simple back propagation with L2 regularisation, no batch norm yet
     L = len(layers)-1
     m = len(Y[0,:])
     grads = dict()
     cache['dA'+str(L)] = - Y / cache['A'+str(L)] + (1 - Y) / (1 - cache['A'+str(L)])
     cache['dZ'+str(L)] = dsigmoid(cache['Z'+str(L)])*cache['dA'+str(L)]
-    grads['dW'+str(L)] = cache['dZ'+str(L)] @ np.transpose(cache['A'+str(L-1)]) / m
+    grads['dW'+str(L)] = cache['dZ'+str(L)] @ np.transpose(cache['A'+str(L-1)])/m + (lambd * params['W'+str(L)])/m
     grads['db'+str(L)] = np.mean(cache['dZ'+str(L)], axis=1, keepdims = True)
     cache['dA'+str(L-1)] = np.transpose(params['W'+str(L)]) @ cache['dZ'+str(L)]
     for l in range(len(layers)-2, 0, -1) :
         cache['dZ'+str(l)] = drelu(cache['Z'+str(l)])*cache['dA'+str(l)]
-        grads['dW'+str(l)] = cache['dZ'+str(l)] @ np.transpose(cache['A'+str(l-1)]) / m
+        grads['dW'+str(l)] = cache['dZ'+str(l)] @ np.transpose(cache['A'+str(l-1)])/m + (lambd * params['W'+str(l)])/m
         grads['db'+str(l)] = np.mean(cache['dZ'+str(l)], axis=1, keepdims = True)
         if l > 1 :
             cache['dA'+str(l-1)] = np.transpose(params['W'+str(l)]) @ cache['dZ'+str(l)]
@@ -114,7 +119,7 @@ def bp(X, Y, params, layers, cache, grad_check = False) :
             print("GRAD CHECK FAILED!")
     return grads
 
-def num_grads(X, Y, params, layers, e = 1e-4) :
+def num_grads(X, Y, params, layers, e = 1e-8) :
     # calculate gradients numerically to check back propagation function
     grads = dict()
     perturbed_params_1 = params.copy()
@@ -136,7 +141,7 @@ def num_grads(X, Y, params, layers, e = 1e-4) :
                 perturbed_params_2[key][i,j] = orig2
     return grads
 
-def compare_grads(grads1, grads2, tolerance = 1e-3) :
+def compare_grads(grads1, grads2, tolerance = 1e-4) :
     # compare two sets of gradients (i.e. from numerical calculation and back propagation)
     ok = True
     for key,value in grads1.items() :
@@ -156,7 +161,7 @@ def duplicate_params(params) :
         copy[key] = value.copy() # numpy array
     return copy
 
-def gradient_decent(X, Y, params, layers, alpha = 0.001, itterations = 100, grad_check = False) :
+def gradient_decent(X, Y, params, layers, alpha = 0.001, lambd = 0, itterations = 100, grad_check = False) :
     # basic bitch gradent decent, no momentum or adam yet
     (J, cache) = cost(X, Y, params, layers)
     J_prev = J
@@ -200,7 +205,7 @@ if training :
         m = 1024
         (X, Y) = generate_X_Y(m, LAYERS)
         params = load_params(LAYERS)
-        (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.003*min(J,1), itterations = 100, grad_check = False)
+        (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.003*min(J,1), lambd = 0.1, itterations = 100, grad_check = False)
         print('cost =', J)
         save_params(params)
         #end = perf_counter()
