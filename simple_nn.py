@@ -4,7 +4,9 @@ import sys
 from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
-LAYERS = [2,15,15,15,1]
+LAYERS = [784,100,100,10]
+# numpy array of classes (needs to be the same number of classes as there are nodes in the final layer)
+CLASSES = np.array([[0,1,2,3,4,5,6,7,8,9]]).T
 
 def save_params(params, filename = 'data.h5') :
     # save weights and biases to file
@@ -29,23 +31,45 @@ def load_params(layers, filename = 'data.h5') :
         params = init(layers)
     return params
 
-def classification_to_learn(X, layers) :
-    # in the absence of data, lets make some up
-    m = len(X[0,:])
-    Y = np.zeros((layers[len(layers)-1],m))
-    for i in range(m) :
-        # whatever classification fucntion you like so long as Y is either 1 or 0
-        if 2*np.sin(X[0,i]) > np.cos(X[1,i]) :
-            Y[0,i] = 1
-        else :
-            Y[0,i] = 0
-    return Y
+def one_hot(Y) :
+    hotY = (Y == CLASSES)
+    hotY = hotY.astype(int)
+    return hotY
 
-def generate_X_Y(m, layers) :
-    # random inputs from -5 to 5
-    X = np.random.uniform(-5, 5, [layers[0],m])
-    Y = classification_to_learn(X, layers)
+def from_one_hot(Y) :
+    notHot = np.sum(Y * CLASSES, axis=0)
+    return notHot
+
+def mnist_X_Y(filename = 'mnist_train.csv') :
+    # load training or test data from csv files (mnist)
+    try :
+        data = np.loadtxt(filename, delimiter=",")
+    except :
+        return (None, None)
+    X = np.array(data[:,1:], dtype='uint8') / 255
+    X = X.T
+    Y = np.array(data[:,0], dtype='uint8')
+    Y = one_hot(Y)
     return (X, Y)
+
+def random_mini_batches(X, Y, mini_batch_size = 128) :
+    m = X.shape[0]
+    mini_batches = []
+    perms = list(np.random.permutation(m))
+    shuffled_X = X[:,perms]
+    shuffled_Y = Y[:,perms]
+    complete = int(np.floor(m/mini_batch_size))
+    for i in range(0, complete):
+        mini_batch_X = shuffled_X[:, i * mini_batch_size : i * mini_batch_size + mini_batch_size]
+        mini_batch_Y = shuffled_Y[:, i * mini_batch_size : i * mini_batch_size + mini_batch_size]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+    if m % mini_batch_size != 0:
+        mini_batch_X = shuffled_X[:, complete * mini_batch_size : m]
+        mini_batch_Y = shuffled_Y[:, complete * mini_batch_size : m]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+    return mini_batches
 
 def relu(Z) :
     # relu activation function
@@ -62,6 +86,11 @@ def sigmoid(Z) :
 def dsigmoid(Z) :
     # sigmoid derivative
     return sigmoid(Z)*(1-sigmoid(Z))
+
+def softmax(Z) :
+    # softmax activation function
+    ez = np.exp(Z - np.max(Z))
+    return ez/np.sum(ez, axis=0)
 
 def init(layers) :
     # He initialisation
@@ -81,8 +110,8 @@ def fp(X, params, layers) :
         if l < len(layers) - 1 :
             cache['A'+str(l)] = relu(cache['Z'+str(l)])
         else :
-            cache['A'+str(l)] = sigmoid(cache['Z'+str(l)])
-        H = cache.get('A'+str(len(layers)-1), None)
+            cache['A'+str(l)] = softmax(cache['Z'+str(l)])
+    H = cache.get('A'+str(len(layers)-1), None)
     return (H, cache)
 
 def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
@@ -94,7 +123,7 @@ def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
         for l in range(1, len(layers)) :
             L2reg += np.sum(np.square(params['W'+str(l)]))
         L2reg = lambd * L2reg / (2 * m)
-    J = np.sum(np.sum(-Y*np.log(H+e)-(1-Y)*np.log(1-H+e)))/m + L2reg
+    J = np.sum(np.sum(-Y*np.log(H+e)))/m + L2reg
     return (J, cache)
 
 def bp(X, Y, params, layers, cache, lambd = 0, grad_check = False) :
@@ -102,8 +131,7 @@ def bp(X, Y, params, layers, cache, lambd = 0, grad_check = False) :
     L = len(layers)-1
     m = len(Y[0,:])
     grads = dict()
-    cache['dA'+str(L)] = - Y / cache['A'+str(L)] + (1 - Y) / (1 - cache['A'+str(L)])
-    cache['dZ'+str(L)] = dsigmoid(cache['Z'+str(L)])*cache['dA'+str(L)]
+    cache['dZ'+str(L)] = cache['A'+str(L)] - Y
     grads['dW'+str(L)] = cache['dZ'+str(L)] @ np.transpose(cache['A'+str(L-1)])/m + (lambd * params['W'+str(L)])/m
     grads['db'+str(L)] = np.mean(cache['dZ'+str(L)], axis=1, keepdims = True)
     cache['dA'+str(L-1)] = np.transpose(params['W'+str(L)]) @ cache['dZ'+str(L)]
@@ -161,7 +189,7 @@ def duplicate_params(params) :
         copy[key] = value.copy() # numpy array
     return copy
 
-def gradient_decent(X, Y, params, layers, alpha = 0.001, lambd = 0, itterations = 100, grad_check = False) :
+def gradient_decent(X, Y, params, layers, alpha = 0.001, lambd = 0, itterations = 100, grad_check = False, print_J = False) :
     # basic bitch gradent decent, no momentum or adam yet
     (J, cache) = cost(X, Y, params, layers)
     J_prev = J
@@ -189,34 +217,45 @@ def gradient_decent(X, Y, params, layers, alpha = 0.001, lambd = 0, itterations 
             print('Cost is NaN, breaking')
             break
         J_prev = J
+        if print_J :
+            print(J)
     return (params, J)
 
-training = False
-testing = False
-if 'train' in sys.argv :
-    training = True
-if 'test' in sys.argv :
-    testing = True
-
-if training :
+def train() :
+    params = load_params(LAYERS)
+    (X, Y) = mnist_X_Y('mnist_train.csv')
+    if X is None or Y is None :
+        print('Error loading training data')
+        quit()
     J = 1
-    for i in range(10000) : # 10000 mini-batches
+    training_itterations = 1000
+    for i in range(training_itterations) :
         #start = perf_counter()
-        m = 1024
-        (X, Y) = generate_X_Y(m, LAYERS)
-        params = load_params(LAYERS)
-        (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.003*min(J,1), lambd = 0.1, itterations = 100, grad_check = False)
-        print('cost =', J)
+        mini_batches = random_mini_batches(X, Y, mini_batch_size = 128)
+        for mini_batch in mini_batches :
+            (mini_batch_X, mini_batch_Y) = mini_batch
+            (params, J) = gradient_decent(mini_batch_X, mini_batch_Y, params, LAYERS, alpha = 0.003*min(J,1), lambd = 0.1, itterations = 100, grad_check = False, print_J = False)
         save_params(params)
+        print(np.round(((i+1)/training_itterations)*100, decimals = 1), '% : Cost = ', J, sep='', end="\r")
         #end = perf_counter()
         #print(end - start, 'seconds')
-elif testing :
+    print('\nTraining complete.')
+
+def test() :
     params = load_params(LAYERS)
-    m = 10000
-    (X, Y) = generate_X_Y(m, LAYERS)
+    (X, Y) = mnist_X_Y('mnist_test.csv')
+    if X is None or Y is None :
+        print('Error loading test data')
+        quit()
+    m = len(X[:,0])
     (H, cache) = fp(X, params, LAYERS)
     H = np.round(H)
-    comp = (H == Y)
-    print(str(np.round(np.sum(comp)/len(comp[0,:])*100, decimals = 3))+'% accuracy')
-else :
-    print("Use 'train' or 'test' argument")
+    comp = (from_one_hot(H) == from_one_hot(Y)).astype(int)
+    print(str(np.round(np.sum(comp)/len(comp)*100, decimals = 3))+'% accuracy')
+
+if 'train' in sys.argv :
+    train()
+if 'test' in sys.argv :
+    test()
+if 'train' not in sys.argv and 'test' not in sys.argv :
+    print("Use 'train' and/or 'test' argument")
