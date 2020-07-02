@@ -1,14 +1,13 @@
 import numpy as np
 import h5py
 import sys
-from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
-LAYERS = [784,100,100,10]
+LAYERS = [784,800,10,10]
 # numpy array of classes (needs to be the same number of classes as there are nodes in the final layer)
 CLASSES = np.array([[0,1,2,3,4,5,6,7,8,9]]).T
 # default activation type (relu, sigmoid or tanh)
-ACTIVATION = 'relu'
+ACTIVATION = 'tanh'
 
 def save_params(params, filename = 'data.h5') :
     # save weights and biases to file
@@ -29,7 +28,6 @@ def load_params(layers, filename = 'data.h5') :
             params[key] = np.array(hf.get(key))
         hf.close()
     except :
-        print('Error loading params')
         params = init(layers)
     return params
 
@@ -247,6 +245,8 @@ def gradient_decent(X, Y, params, layers, alpha = 0.01, lambd = 0.01, epochs = 1
                 print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end="\r")
             if save_parameters :
                 save_params(params)
+    if print_J :
+        print('\n')
     return (params, J)
 
 def train(filename = 'mnist_train.csv') :
@@ -255,12 +255,17 @@ def train(filename = 'mnist_train.csv') :
     if X is None or Y is None :
         print('Error loading training data')
         quit()
-    start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.1, lambd = 0, epochs = 1000, mini_batch_size = 128, grad_check = False, save_parameters = True, print_J = True, skip_bad_batch = False)
+    print('Training...')
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.1, lambd = 0.01, epochs = 1000, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
-    end = perf_counter()
-    print('\nTraining completed in',end - start, 'seconds')
-    test(title = 'Train Data', filename = 'mnist_train.csv')
+    false_indices = test(title = 'Train Data', filename = 'mnist_train.csv')
+    print('Training on failed examples...')
+    # just a light touch
+    (params, J) = gradient_decent(X[:,false_indices], Y[:,false_indices], params, LAYERS, alpha = 0.01, lambd = 0.01, epochs = 100, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    print('Retraining on whole data set...')
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.1, lambd = 0.1, epochs = 1000, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    save_params(params)
+    _ = test(title = 'Train Data', filename = 'mnist_train.csv')
 
 def test(title = 'Test Data', filename = 'mnist_test.csv') :
     params = load_params(LAYERS)
@@ -273,14 +278,19 @@ def test(title = 'Test Data', filename = 'mnist_test.csv') :
     H = np.argmax(H, axis=0)
     Y = np.argmax(Y, axis=0)
     comp = (H == Y).astype(int)
-    #indices = np.where(comp == 0)
-    #for i in indices[0] :
-    #    print('Prediction:', H[i], 'Base reality:', Y[i])
-    print(title,':',str(np.round(np.mean(comp)*100, decimals = 3))+'% accuracy')
+    if np.mean(comp)*100 > 90 and filename == 'mnist_test.csv' :
+        print('***BOOM!***')
+    print(title,': ',str(np.round(np.mean(comp)*100, decimals = 3))+'% accuracy\n', sep='')
+    return np.where(comp == 0)[0] # returns examples where the model failed
 
-if 'train' in sys.argv :
-    train()
-if 'test' in sys.argv :
-    test()
-if 'train' not in sys.argv and 'test' not in sys.argv :
-    print("Use 'train' and/or 'test' argument")
+if 'loop' in sys.argv :
+    while True :
+        train()
+        test()
+else :
+    if 'train' in sys.argv :
+        train()
+    if 'test' in sys.argv :
+        test()
+    if 'train' not in sys.argv and 'test' not in sys.argv :
+        print("Use 'train' and/or 'test' or 'loop' argument")
