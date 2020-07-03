@@ -1,6 +1,7 @@
 import numpy as np
 import h5py
 import sys
+from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
 LAYERS = [784,800,10,10]
@@ -137,7 +138,7 @@ def fp(X, params, layers) :
 def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
     # cost function
     (H, cache) = fp(X, params, layers)
-    m = len(Y[0,:])
+    m = X.shape[1]
     L2reg = 0
     if lambd > 0 :
         for l in range(1, len(layers)) :
@@ -149,7 +150,7 @@ def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
 def bp(X, Y, params, layers, cache, lambd = 0, grad_check = False) :
     # simple back propagation with L2 regularisation, no batch norm yet
     L = len(layers)-1
-    m = len(Y[0,:])
+    m = X.shape[1]
     grads = dict()
     cache['dZ'+str(L)] = cache['A'+str(L)] - Y
     grads['dW'+str(L)] = cache['dZ'+str(L)] @ np.transpose(cache['A'+str(L-1)])/m + (lambd * params['W'+str(L)])/m
@@ -209,18 +210,17 @@ def duplicate_params(params) :
         copy[key] = value.copy() # numpy array
     return copy
 
-def gradient_decent(X, Y, params, layers, alpha = 0.01, lambd = 0.01, epochs = 1000, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False, skip_bad_batch = False) :
+def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False, skip_bad_batch = False) :
     # basic bitch gradent decent, no momentum or adam yet
-    m = len(Y[:,0])
     for i in range(epochs) :
         mini_batches = random_mini_batches(X, Y, mini_batch_size = mini_batch_size)
         for mini_batch in mini_batches :
             (mini_batch_X, mini_batch_Y) = mini_batch
-            (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers)
+            (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers, lambd = lambd)
             if skip_bad_batch :
                 J_prev = J
                 params_prev = duplicate_params(params) # worth the performance hit? probably not
-            grads = bp(mini_batch_X, mini_batch_Y, params, layers, cache, grad_check = grad_check)
+            grads = bp(mini_batch_X, mini_batch_Y, params, layers, cache, lambd = lambd, grad_check = grad_check)
             for j in range(1, len(layers)) :
                 adW = alpha * grads['dW'+str(j)]
                 adb = alpha * grads['db'+str(j)]
@@ -232,7 +232,7 @@ def gradient_decent(X, Y, params, layers, alpha = 0.01, lambd = 0.01, epochs = 1
                         params = params_prev
                         break
             if skip_bad_batch :
-                (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers)
+                (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers, lambd = lambd)
                 if J > J_prev :
                     print('COST GOING UP, skipping mini-batch')
                     params = params_prev
@@ -257,8 +257,11 @@ def train(filename = 'mnist_train.csv') :
         print('Error loading training data')
         quit()
     print('Training...')
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.03, epochs = 100, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    start = perf_counter()
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.1, epochs = 10, mini_batch_size = 256, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
+    end = perf_counter()
+    print('Training completed in', end - start, 'seconds')
     print('Testing...')
     test(title = 'Train Data', filename = 'mnist_train.csv')
 
@@ -273,11 +276,15 @@ def test(title = 'Test Data', filename = 'mnist_test.csv') :
     H = np.argmax(H, axis=0)
     Y = np.argmax(Y, axis=0)
     comp = (H == Y).astype(int)
-    print(title,': ',str(np.round(np.mean(comp)*100, decimals = 3))+'% accuracy', sep='')
-    return np.where(comp == 0)[0] # returns examples where the model failed
+    accuracy = np.round(np.mean(comp)*100, decimals = 3)
+    print(title,': ',str(accuracy)+'% accuracy', sep='')
+    return accuracy
 
 if 'loop' in sys.argv :
+    i = 0
     while True :
+        i += 1
+        print('Itteration:',i)
         train()
         test()
 else :
