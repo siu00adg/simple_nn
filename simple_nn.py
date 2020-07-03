@@ -250,6 +250,7 @@ def gradient_decent(X, Y, params, layers, alpha = 0.01, lambd = 0.01, epochs = 1
     return (params, J)
 
 def train(filename = 'mnist_train.csv') :
+    print('Loading Data...')
     params = load_params(LAYERS)
     (X, Y) = mnist_X_Y(filename)
     if X is None or Y is None :
@@ -258,6 +259,7 @@ def train(filename = 'mnist_train.csv') :
     print('Training...')
     (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.03, epochs = 100, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
+    print('Testing...')
     test(title = 'Train Data', filename = 'mnist_train.csv')
 
 def test(title = 'Test Data', filename = 'mnist_test.csv') :
@@ -271,9 +273,7 @@ def test(title = 'Test Data', filename = 'mnist_test.csv') :
     H = np.argmax(H, axis=0)
     Y = np.argmax(Y, axis=0)
     comp = (H == Y).astype(int)
-    if np.mean(comp)*100 > 95 and filename == 'mnist_test.csv' :
-        print('***BOOM!***')
-    print(title,': ',str(np.round(np.mean(comp)*100, decimals = 3))+'% accuracy\n', sep='')
+    print(title,': ',str(np.round(np.mean(comp)*100, decimals = 3))+'% accuracy', sep='')
     return np.where(comp == 0)[0] # returns examples where the model failed
 
 if 'loop' in sys.argv :
