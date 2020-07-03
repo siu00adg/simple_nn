@@ -269,7 +269,7 @@ def train(filename = 'mnist_train.csv') :
         quit()
     print('Training...')
     start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.1, lambd = 0.1, beta = 0.9, epochs = 50, mini_batch_size = 256, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.05, lambd = 0.05, beta = 0.9, epochs = 50, mini_batch_size = 256, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
     end = perf_counter()
     print('Training completed in', end - start, 'seconds')
