@@ -242,11 +242,11 @@ def gradient_decent(X, Y, params, layers, alpha = 0.01, lambd = 0.01, epochs = 1
                     continue
             J_prev = J
             if print_J :
-                print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end="\r")
+                print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end='\r')
             if save_parameters :
                 save_params(params)
     if print_J :
-        print('\n')
+        print('\n', end='')
     return (params, J)
 
 def train(filename = 'mnist_train.csv') :
