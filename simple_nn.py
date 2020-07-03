@@ -49,7 +49,7 @@ def mnist_X_Y(filename = 'mnist_train.csv') :
     return (X, Y)
 
 def random_mini_batches(X, Y, mini_batch_size = 128) :
-    m = X.shape[0]
+    m = X.shape[1]
     mini_batches = []
     perms = list(np.random.permutation(m))
     shuffled_X = X[:,perms]
@@ -256,16 +256,9 @@ def train(filename = 'mnist_train.csv') :
         print('Error loading training data')
         quit()
     print('Training...')
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.03, epochs = 1000, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.03, epochs = 100, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
-    false_indices = test(title = 'Train Data', filename = 'mnist_train.csv')
-    print('Training on failed examples...')
-    # just a light touch
-    (params, J) = gradient_decent(X[:,false_indices], Y[:,false_indices], params, LAYERS, alpha = 0.003, lambd = 0.03, epochs = 100, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
-    print('Retraining on whole data set...')
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.03, epochs = 1000, mini_batch_size = 128, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
-    save_params(params)
-    _ = test(title = 'Train Data', filename = 'mnist_train.csv')
+    test(title = 'Train Data', filename = 'mnist_train.csv')
 
 def test(title = 'Test Data', filename = 'mnist_test.csv') :
     params = load_params(LAYERS)
@@ -273,7 +266,7 @@ def test(title = 'Test Data', filename = 'mnist_test.csv') :
     if X is None or Y is None :
         print('Error loading test data')
         quit()
-    m = len(X[:,0])
+    m = X.shape[1]
     (H, cache) = fp(X, params, LAYERS)
     H = np.argmax(H, axis=0)
     Y = np.argmax(Y, axis=0)
