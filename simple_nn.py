@@ -210,8 +210,16 @@ def duplicate_params(params) :
         copy[key] = value.copy() # numpy array
     return copy
 
-def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False, skip_bad_batch = False) :
-    # basic bitch gradent decent, no momentum or adam yet
+def momentum_zeros(layers = LAYERS) :
+    V = dict()
+    for l in range(1, len(layers)) :
+        V['dW'+str(l)] = np.zeros((layers[l], layers[l-1]))
+        V['db'+str(l)] = np.zeros((layers[l], 1))
+    return V
+
+def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False, skip_bad_batch = False) :
+    # basic bitch gradent decent, no adam yet
+    V = momentum_zeros()
     for i in range(epochs) :
         mini_batches = random_mini_batches(X, Y, mini_batch_size = mini_batch_size)
         for mini_batch in mini_batches :
@@ -222,11 +230,14 @@ def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, epochs = 10, m
                 params_prev = duplicate_params(params) # worth the performance hit? probably not
             grads = bp(mini_batch_X, mini_batch_Y, params, layers, cache, lambd = lambd, grad_check = grad_check)
             for j in range(1, len(layers)) :
-                adW = alpha * grads['dW'+str(j)]
-                adb = alpha * grads['db'+str(j)]
-                if not np.isnan(adW).any() and not np.isnan(adb).any():
-                    params['W'+str(j)] = params['W'+str(j)] - adW
-                    params['b'+str(j)] = params['b'+str(j)] - adb
+                # momentum
+                V['dW'+str(j)] = beta * V['dW'+str(j)] + (1 - beta) * grads['dW'+str(j)]
+                V['db'+str(j)] = beta * V['db'+str(j)] + (1 - beta) * grads['db'+str(j)]
+                avdW = alpha * V['dW'+str(j)]
+                avdb = alpha * V['db'+str(j)]
+                if not np.isnan(avdW).any() and not np.isnan(avdb).any():
+                    params['W'+str(j)] = params['W'+str(j)] - avdW
+                    params['b'+str(j)] = params['b'+str(j)] - avdb
                 else :
                     if skip_bad_batch :
                         params = params_prev
@@ -258,7 +269,7 @@ def train(filename = 'mnist_train.csv') :
         quit()
     print('Training...')
     start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.1, epochs = 10, mini_batch_size = 256, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.1, lambd = 0.1, beta = 0.9, epochs = 50, mini_batch_size = 256, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
     save_params(params)
     end = perf_counter()
     print('Training completed in', end - start, 'seconds')
