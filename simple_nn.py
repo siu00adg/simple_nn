@@ -217,7 +217,7 @@ def momentum_zeros(layers = LAYERS) :
         V['db'+str(l)] = np.zeros((layers[l], 1))
     return V
 
-def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False, skip_bad_batch = False) :
+def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False) :
     # basic bitch gradent decent, no adam yet
     V = momentum_zeros()
     for i in range(epochs) :
@@ -225,9 +225,6 @@ def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epoc
         for mini_batch in mini_batches :
             (mini_batch_X, mini_batch_Y) = mini_batch
             (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers, lambd = lambd)
-            if skip_bad_batch :
-                J_prev = J
-                params_prev = duplicate_params(params) # worth the performance hit? probably not
             grads = bp(mini_batch_X, mini_batch_Y, params, layers, cache, lambd = lambd, grad_check = grad_check)
             for j in range(1, len(layers)) :
                 # momentum
@@ -238,20 +235,6 @@ def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epoc
                 if not np.isnan(avdW).any() and not np.isnan(avdb).any():
                     params['W'+str(j)] = params['W'+str(j)] - avdW
                     params['b'+str(j)] = params['b'+str(j)] - avdb
-                else :
-                    if skip_bad_batch :
-                        params = params_prev
-                        break
-            if skip_bad_batch :
-                (J, cache) = cost(mini_batch_X, mini_batch_Y, params, layers, lambd = lambd)
-                if J > J_prev :
-                    print('COST GOING UP, skipping mini-batch')
-                    params = params_prev
-                    continue
-                if np.isnan(J) :
-                    print('Cost is NaN, skipping mini-batch')
-                    continue
-            J_prev = J
             if print_J :
                 print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end='\r')
             if save_parameters :
@@ -269,7 +252,7 @@ def train(filename = 'mnist_train.csv') :
         quit()
     print('Training...')
     start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.02, lambd = 0.025, beta = 0.95, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True, skip_bad_batch = False)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.01, beta = 0.9, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True)
     save_params(params)
     end = perf_counter()
     print('Training completed in', end - start, 'seconds')
