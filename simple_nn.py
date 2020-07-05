@@ -4,7 +4,7 @@ import sys
 from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
-LAYERS = [784,800,10,10]
+LAYERS = [784,400,200,100,50,10]
 # numpy array of classes (needs to be the same number of classes as there are nodes in the final layer)
 CLASSES = np.array([[0,1,2,3,4,5,6,7,8,9]]).T
 # default activation type (relu, sigmoid or tanh)
@@ -76,6 +76,14 @@ def drelu(Z) :
     # relu derivative
     return 1 * (Z > 0)
 
+def leakyrelu(Z) :
+    # leaky relu activation function
+    return (((Z > 0) * 1) + (Z <= 0) * 0.01)*Z
+
+def dleakyrelu(Z) :
+    # leaky relu derivative
+    return (((Z > 0) * 1) + (Z <= 0) * 0.01)
+
 def sigmoid(Z) :
     # sigmoid activation function
     return 1/(1 + np.exp(-Z))
@@ -99,6 +107,8 @@ def activation(Z, type = ACTIVATION) :
         return sigmoid(Z)
     elif type == 'tanh' :
         return tanh(Z)
+    elif type == 'leakyrelu' :
+        return leakyrelu(Z)
 
 def dactivation(Z, type = ACTIVATION) :
     if type == 'relu' :
@@ -107,6 +117,8 @@ def dactivation(Z, type = ACTIVATION) :
         return dsigmoid(Z)
     elif type == 'tanh' :
         return dtanh(Z)
+    elif type == 'leakyrelu' :
+        return dleakyrelu(Z)
 
 def softmax(Z) :
     # softmax activation function
@@ -252,7 +264,7 @@ def train(filename = 'mnist_train.csv') :
         quit()
     print('Training...')
     start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.01, beta = 0.9, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.1, beta = 0.9, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True)
     save_params(params)
     end = perf_counter()
     print('Training completed in', end - start, 'seconds')
