@@ -4,7 +4,7 @@ import sys
 from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
-LAYERS = [784,400,200,100,50,10]
+LAYERS = [784,800,200,50,10]
 # numpy array of classes (needs to be the same number of classes as there are nodes in the final layer)
 CLASSES = np.array([[0,1,2,3,4,5,6,7,8,9]]).T
 # default activation type (relu, sigmoid or tanh)
@@ -248,7 +248,7 @@ def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epoc
                     params['W'+str(j)] = params['W'+str(j)] - avdW
                     params['b'+str(j)] = params['b'+str(j)] - avdb
             if print_J :
-                print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end='\r')
+                print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end='    \r')
             if save_parameters :
                 save_params(params)
     if print_J :
@@ -264,14 +264,14 @@ def train(filename = 'mnist_train.csv') :
         quit()
     print('Training...')
     start = perf_counter()
-    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.03, lambd = 0.1, beta = 0.9, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True)
+    (params, J) = gradient_decent(X, Y, params, LAYERS, alpha = 0.02, lambd = 0.125, beta = 0.9, epochs = 50, mini_batch_size = 512, grad_check = False, save_parameters = False, print_J = True)
     save_params(params)
     end = perf_counter()
     print('Training completed in', end - start, 'seconds')
     print('Testing...')
     test(title = 'Train Data', filename = 'mnist_train.csv')
 
-def test(title = 'Test Data', filename = 'mnist_test.csv') :
+def test(title = 'Test Data', filename = 'mnist_test.csv', print_accuracy = True) :
     params = load_params(LAYERS)
     (X, Y) = mnist_X_Y(filename)
     if X is None or Y is None :
@@ -283,7 +283,8 @@ def test(title = 'Test Data', filename = 'mnist_test.csv') :
     Y = np.argmax(Y, axis=0)
     comp = (H == Y).astype(int)
     accuracy = np.round(np.mean(comp)*100, decimals = 3)
-    print(title,': ',str(accuracy)+'% accuracy', sep='')
+    if print_accuracy :
+        print(title,': ',str(accuracy)+'% accuracy', sep='')
     return accuracy
 
 if 'loop' in sys.argv :
