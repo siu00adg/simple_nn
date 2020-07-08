@@ -4,9 +4,9 @@ import sys
 from time import perf_counter
 
 # how many neurons in each layer (layer 0 is the input and the last layer is the output)
-LAYERS = [784,800,200,50,10]
+LAYERS = [784, 800, 200, 50, 10]
 # numpy array of classes (needs to be the same number of classes as there are nodes in the final layer)
-CLASSES = np.array([[0,1,2,3,4,5,6,7,8,9]]).T
+CLASSES = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]).T
 # default activation type (relu, sigmoid or tanh)
 ACTIVATION = 'tanh'
 
@@ -14,8 +14,8 @@ def save_params(params, filename = 'data.h5') :
     # save weights and biases to file
     try :
         hf = h5py.File(filename, 'w')
-        for key,value in params.items() :
-            hf.create_dataset(key, data=value)
+        for key, value in params.items() :
+            hf.create_dataset(key, data = value)
         hf.close()
     except :
         print('Error saving params')
@@ -40,12 +40,12 @@ def one_hot(Y) :
 def mnist_X_Y(filename = 'mnist_train.csv') :
     # load training or test data from csv files (mnist)
     try :
-        data = np.loadtxt(filename, delimiter=",")
+        data = np.loadtxt(filename, delimiter = ",")
     except :
         return (None, None)
-    X = np.array(data[:,1:], dtype='uint8') / 255
+    X = np.array(data[:, 1:], dtype = 'uint8') / 255
     X = X.T
-    Y = np.array(data[:,0], dtype='uint8')
+    Y = np.array(data[:, 0], dtype = 'uint8')
     Y = one_hot(Y)
     return (X, Y)
 
@@ -53,9 +53,9 @@ def random_mini_batches(X, Y, mini_batch_size = 128) :
     m = X.shape[1]
     mini_batches = []
     perms = list(np.random.permutation(m))
-    shuffled_X = X[:,perms]
-    shuffled_Y = Y[:,perms]
-    complete = int(np.floor(m/mini_batch_size))
+    shuffled_X = X[:, perms]
+    shuffled_Y = Y[:, perms]
+    complete = int(np.floor(m / mini_batch_size))
     for i in range(0, complete):
         mini_batch_X = shuffled_X[:, i * mini_batch_size : i * mini_batch_size + mini_batch_size]
         mini_batch_Y = shuffled_Y[:, i * mini_batch_size : i * mini_batch_size + mini_batch_size]
@@ -78,7 +78,7 @@ def drelu(Z) :
 
 def leakyrelu(Z) :
     # leaky relu activation function
-    return (((Z > 0) * 1) + (Z <= 0) * 0.01)*Z
+    return (((Z > 0) * 1) + (Z <= 0) * 0.01) * Z
 
 def dleakyrelu(Z) :
     # leaky relu derivative
@@ -86,11 +86,11 @@ def dleakyrelu(Z) :
 
 def sigmoid(Z) :
     # sigmoid activation function
-    return 1/(1 + np.exp(-Z))
+    return 1 / (1 + np.exp(-Z))
 
 def dsigmoid(Z) :
     # sigmoid derivative
-    return sigmoid(Z)*(1-sigmoid(Z))
+    return sigmoid(Z) * (1 - sigmoid(Z))
 
 def tanh(Z) :
     # tanh activation function
@@ -98,7 +98,7 @@ def tanh(Z) :
 
 def dtanh(Z) :
     # tanh derivative
-    return 1/(np.cosh(Z)**2)
+    return 1 / (np.cosh(Z) ** 2)
 
 def activation(Z, type = ACTIVATION) :
     if type == 'relu' :
@@ -123,28 +123,27 @@ def dactivation(Z, type = ACTIVATION) :
 def softmax(Z) :
     # softmax activation function
     ez = np.exp(Z - np.max(Z))
-    return ez/np.sum(ez, axis=0)
+    return ez / np.sum(ez, axis = 0)
 
 def init(layers) :
     # He initialisation
     params = dict()
     for l in range(1, len(layers)) :
-        params['W'+str(l)] = (np.random.randn(layers[l], layers[l-1]))*np.sqrt(2/(layers[l-1] + layers[l]))
-        params['b'+str(l)] = (np.random.randn(layers[l], 1))
+        params['W' + str(l)] = (np.random.randn(layers[l], layers[l - 1])) * np.sqrt(2 / (layers[l - 1] + layers[l]))
+        params['b' + str(l)] = (np.random.randn(layers[l], 1))
     return params
 
 def fp(X, params, layers) :
     # forward propagation
     cache = dict()
-    H = 0
     cache['A0'] = X
     for l in range(1, len(layers)) :
-        cache['Z'+str(l)] = (params['W'+str(l)] @ cache['A'+str(l-1)]) + params['b'+str(l)]
+        cache['Z' + str(l)] = (params['W' + str(l)] @ cache['A' + str(l - 1)]) + params['b' + str(l)]
         if l < len(layers) - 1 :
-            cache['A'+str(l)] = activation(cache['Z'+str(l)])
+            cache['A' + str(l)] = activation(cache['Z' + str(l)])
         else :
-            cache['A'+str(l)] = softmax(cache['Z'+str(l)])
-    H = cache.get('A'+str(len(layers)-1), None)
+            cache['A' + str(l)] = softmax(cache['Z' + str(l)])
+    H = cache.get('A' + str(len(layers) - 1), None)
     return (H, cache)
 
 def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
@@ -154,26 +153,26 @@ def cost(X, Y, params, layers, lambd = 0, e = 1e-10) :
     L2reg = 0
     if lambd > 0 :
         for l in range(1, len(layers)) :
-            L2reg += np.sum(np.square(params['W'+str(l)]))
+            L2reg += np.sum(np.square(params['W' + str(l)]))
         L2reg = lambd * L2reg / (2 * m)
-    J = np.sum(np.sum(-Y*np.log(H+e)))/m + L2reg
+    J = np.sum(np.sum(-Y * np.log(H + e))) / m + L2reg
     return (J, cache)
 
 def bp(X, Y, params, layers, cache, lambd = 0, grad_check = False) :
     # simple back propagation with L2 regularisation, no batch norm yet
-    L = len(layers)-1
+    L = len(layers) - 1
     m = X.shape[1]
     grads = dict()
-    cache['dZ'+str(L)] = cache['A'+str(L)] - Y
-    grads['dW'+str(L)] = cache['dZ'+str(L)] @ np.transpose(cache['A'+str(L-1)])/m + (lambd * params['W'+str(L)])/m
-    grads['db'+str(L)] = np.mean(cache['dZ'+str(L)], axis=1, keepdims = True)
-    cache['dA'+str(L-1)] = np.transpose(params['W'+str(L)]) @ cache['dZ'+str(L)]
-    for l in range(len(layers)-2, 0, -1) :
-        cache['dZ'+str(l)] = dactivation(cache['Z'+str(l)])*cache['dA'+str(l)]
-        grads['dW'+str(l)] = cache['dZ'+str(l)] @ np.transpose(cache['A'+str(l-1)])/m + (lambd * params['W'+str(l)])/m
-        grads['db'+str(l)] = np.mean(cache['dZ'+str(l)], axis=1, keepdims = True)
+    cache['dZ' + str(L)] = cache['A' + str(L)] - Y
+    grads['dW' + str(L)] = cache['dZ' + str(L)] @ np.transpose(cache['A' + str(L - 1)]) / m + (lambd * params['W' + str(L)]) / m
+    grads['db' + str(L)] = np.mean(cache['dZ' + str(L)], axis = 1, keepdims = True)
+    cache['dA' + str(L - 1)] = np.transpose(params['W' + str(L)]) @ cache['dZ' + str(L)]
+    for l in range(len(layers) - 2, 0, -1) :
+        cache['dZ' + str(l)] = dactivation(cache['Z' + str(l)]) * cache['dA' + str(l)]
+        grads['dW' + str(l)] = cache['dZ' + str(l)] @ np.transpose(cache['A' + str(l-1)]) / m + (lambd * params['W' + str(l)]) / m
+        grads['db' + str(l)] = np.mean(cache['dZ' + str(l)], axis = 1, keepdims = True)
         if l > 1 :
-            cache['dA'+str(l-1)] = np.transpose(params['W'+str(l)]) @ cache['dZ'+str(l)]
+            cache['dA' + str(l - 1)] = np.transpose(params['W' + str(l)]) @ cache['dZ' + str(l)]
     if grad_check :
         numeric_grads = num_grads(X, Y, params, layers)
         if not compare_grads(grads, numeric_grads) :
@@ -186,47 +185,47 @@ def num_grads(X, Y, params, layers, e = 1e-8) :
     perturbed_params_1 = params.copy()
     perturbed_params_2 = params.copy()
     for key,value in params.items() :
-        grads['d'+key] = np.zeros(params[key].shape)
+        grads['d' + key] = np.zeros(params[key].shape)
         perturbed_params_1[key] = np.copy(params[key])
         perturbed_params_2[key] = np.copy(params[key])
-        for i in range(len(value[:,0])) :
-            for j in range(len(value[0,:])) :
-                orig1 = perturbed_params_1[key][i,j]
-                orig2 = perturbed_params_2[key][i,j]
-                perturbed_params_1[key][i,j] = perturbed_params_1[key][i,j] + e
-                perturbed_params_2[key][i,j] = perturbed_params_2[key][i,j] - e
-                (loss_1,_) = cost(X, Y, perturbed_params_1, layers)
-                (loss_2,_) = cost(X, Y, perturbed_params_2, layers)
-                grads['d'+key][i,j] = (loss_1 - loss_2) / (2*e)
-                perturbed_params_1[key][i,j] = orig1
-                perturbed_params_2[key][i,j] = orig2
+        for i in range(len(value[:, 0])) :
+            for j in range(len(value[0, :])) :
+                orig1 = perturbed_params_1[key][i, j]
+                orig2 = perturbed_params_2[key][i, j]
+                perturbed_params_1[key][i, j] = perturbed_params_1[key][i, j] + e
+                perturbed_params_2[key][i, j] = perturbed_params_2[key][i, j] - e
+                (loss_1, _) = cost(X, Y, perturbed_params_1, layers)
+                (loss_2, _) = cost(X, Y, perturbed_params_2, layers)
+                grads['d' + key][i, j] = (loss_1 - loss_2) / (2 * e)
+                perturbed_params_1[key][i, j] = orig1
+                perturbed_params_2[key][i, j] = orig2
     return grads
 
 def compare_grads(grads1, grads2, tolerance = 1e-4) :
     # compare two sets of gradients (i.e. from numerical calculation and back propagation)
     ok = True
-    for key,value in grads1.items() :
-        for i in range(len(value[:,0])) :
-            for j in range(len(value[0,:])) :
-                if np.abs(grads1[key][i,j] - grads2[key][i,j]) > tolerance :
-                    print(key,i,j)
-                    print(grads1[key][i,j], grads2[key][i,j])
-                    print('diff:',grads1[key][i,j]-grads2[key][i,j])
+    for key, value in grads1.items() :
+        for i in range(len(value[:, 0])) :
+            for j in range(len(value[0, :])) :
+                if np.abs(grads1[key][i, j] - grads2[key][i, j]) > tolerance :
+                    print(key, i, j)
+                    print(grads1[key][i, j], grads2[key][i, j])
+                    print('diff:', grads1[key][i, j] - grads2[key][i, j])
                     ok = False
     return ok
 
 def duplicate_params(params) :
     # copy all weights and biases for the numerical gradient calculations
     copy = dict()
-    for key,value in params.items() :
+    for key, value in params.items() :
         copy[key] = value.copy() # numpy array
     return copy
 
 def momentum_zeros(layers = LAYERS) :
     V = dict()
     for l in range(1, len(layers)) :
-        V['dW'+str(l)] = np.zeros((layers[l], layers[l-1]))
-        V['db'+str(l)] = np.zeros((layers[l], 1))
+        V['dW' + str(l)] = np.zeros((layers[l], layers[l - 1]))
+        V['db' + str(l)] = np.zeros((layers[l], 1))
     return V
 
 def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epochs = 10, mini_batch_size = 64, grad_check = False, save_parameters = False, print_J = False) :
@@ -240,19 +239,19 @@ def gradient_decent(X, Y, params, layers, alpha = 0.1, lambd = 0, beta = 0, epoc
             grads = bp(mini_batch_X, mini_batch_Y, params, layers, cache, lambd = lambd, grad_check = grad_check)
             for j in range(1, len(layers)) :
                 # momentum
-                V['dW'+str(j)] = beta * V['dW'+str(j)] + (1 - beta) * grads['dW'+str(j)]
-                V['db'+str(j)] = beta * V['db'+str(j)] + (1 - beta) * grads['db'+str(j)]
-                avdW = alpha * V['dW'+str(j)]
-                avdb = alpha * V['db'+str(j)]
+                V['dW' + str(j)] = beta * V['dW' + str(j)] + (1 - beta) * grads['dW' + str(j)]
+                V['db' + str(j)] = beta * V['db' + str(j)] + (1 - beta) * grads['db' + str(j)]
+                avdW = alpha * V['dW' + str(j)]
+                avdb = alpha * V['db' + str(j)]
                 if not np.isnan(avdW).any() and not np.isnan(avdb).any():
-                    params['W'+str(j)] = params['W'+str(j)] - avdW
-                    params['b'+str(j)] = params['b'+str(j)] - avdb
+                    params['W' + str(j)] = params['W' + str(j)] - avdW
+                    params['b' + str(j)] = params['b' + str(j)] - avdb
             if print_J :
-                print('Epoch: ', i+1, '/', epochs, ' Cost = ', J, sep='', end='    \r')
+                print('Epoch: ', i + 1, '/', epochs, ' Cost = ', J, sep = '', end = '    \r')
             if save_parameters :
                 save_params(params)
     if print_J :
-        print('\n', end='')
+        print('\n', end = '')
     return (params, J)
 
 def train(filename = 'mnist_train.csv') :
@@ -279,19 +278,19 @@ def test(title = 'Test Data', filename = 'mnist_test.csv', print_accuracy = True
         quit()
     m = X.shape[1]
     (H, cache) = fp(X, params, LAYERS)
-    H = np.argmax(H, axis=0)
-    Y = np.argmax(Y, axis=0)
+    H = np.argmax(H, axis = 0)
+    Y = np.argmax(Y, axis = 0)
     comp = (H == Y).astype(int)
-    accuracy = np.round(np.mean(comp)*100, decimals = 3)
+    accuracy = np.round(np.mean(comp) * 100, decimals = 3)
     if print_accuracy :
-        print(title,': ',str(accuracy)+'% accuracy', sep='')
+        print(title, ': ', str(accuracy) + '% accuracy', sep = '')
     return accuracy
 
 if 'loop' in sys.argv :
     i = 0
     while True :
         i += 1
-        print('Itteration:',i)
+        print('Itteration:', i)
         train()
         test()
 else :
